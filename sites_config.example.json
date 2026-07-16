@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Example Company",
+    "login_url": "https://example.wd1.myworkdayjobs.com/en-US/External/login",
+    "applications_url": "https://example.wd1.myworkdayjobs.com/en-US/External/userHome",
+    "email_env": "EXAMPLE_EMAIL",
+    "password_env": "EXAMPLE_PASSWORD"
+  },
+  {
+    "name": "Another Company (custom selector example)",
+    "login_url": "https://another.wd5.myworkdayjobs.com/en-US/Careers/login",
+    "applications_url": "https://another.wd5.myworkdayjobs.com/en-US/Careers/userHome",
+    "email_env": "ANOTHER_EMAIL",
+    "password_env": "ANOTHER_PASSWORD",
+    "selectors": {
+      "status": "[data-automation-id=\"applicationStatus\"]"
+    }
+  }
+]

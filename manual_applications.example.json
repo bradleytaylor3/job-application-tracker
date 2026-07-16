@@ -1,0 +1,12 @@
+[
+  {
+    "company": "Some Company",
+    "role": "Software Engineer",
+    "date_applied": "2026-07-01",
+    "status": "Waiting"
+  },
+  {
+    "company": "Another Company",
+    "date_applied": "2026-06-15"
+  }
+]
