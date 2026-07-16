@@ -96,6 +96,12 @@ section per company, right alongside the scraped Workday sites — see
 roles at the same company is fine; just add one entry per role and
 they'll appear as separate rows under that company's section.
 
+Editing this JSON by hand works fine, but if you'd rather be walked
+through it conversationally (and have something check whether you're
+about to log a duplicate), see `add-application-prompt.md` — a prompt you
+can paste into any AI chat along with your current
+`manual_applications.json` contents.
+
 ## Troubleshooting a site
 
 Run with a visible browser so you can see what's happening, and it'll
