@@ -21,7 +21,7 @@ from html import escape
 from pathlib import Path
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright, Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
 
 load_dotenv()
 
@@ -90,6 +90,23 @@ def dismiss_cookie_banner(page):
             continue
 
 
+def goto_with_redirect_retry(page, url, timeout):
+    # Some Workday tenants' login pages kick off their own client-side
+    # redirect (e.g. straight to userHome) almost immediately. Waiting for
+    # "load" (the default) means our own navigation is still in flight when
+    # that redirect fires, so Playwright reports it as interrupted. Waiting
+    # only for "domcontentloaded" resolves before that redirect script runs,
+    # so there's nothing left in flight for it to interrupt.
+    try:
+        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+    except PlaywrightError as e:
+        if "interrupted by another navigation" not in str(e):
+            raise
+        # Fallback for tenants where even domcontentloaded loses the race.
+        page.wait_for_timeout(1000)
+        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+
+
 def check_site(page, site, headless):
     selectors = {**DEFAULT_SELECTORS, **site.get("selectors", {})}
     email = os.environ.get(site["email_env"])
@@ -102,8 +119,8 @@ def check_site(page, site, headless):
 
     results = []
     try:
-        page.goto(site["login_url"], timeout=30000)
-        page.wait_for_load_state("networkidle", timeout=30000)
+        goto_with_redirect_retry(page, site["login_url"], timeout=45000)
+        page.wait_for_load_state("networkidle", timeout=45000)
         page.wait_for_timeout(1000)
 
         dismiss_cookie_banner(page)
@@ -115,18 +132,23 @@ def check_site(page, site, headless):
         page.fill(selectors["password_input"], password)
         page.wait_for_timeout(1000)
 
-        page.get_by_role("button", name=selectors["sign_in_button_text"]).click(timeout=15000)
-        page.wait_for_load_state("networkidle", timeout=30000)
+        page.get_by_role("button", name=selectors["sign_in_button_text"]).click(timeout=20000)
+        page.wait_for_load_state("networkidle", timeout=45000)
         page.wait_for_timeout(1000)
 
         if site.get("applications_url"):
-            page.goto(site["applications_url"], timeout=30000)
+            goto_with_redirect_retry(page, site["applications_url"], timeout=45000)
         else:
             page.click(selectors["applications_link"])
-        page.wait_for_load_state("networkidle", timeout=30000)
+        page.wait_for_load_state("networkidle", timeout=45000)
         page.wait_for_timeout(1000)
 
-        page.wait_for_selector(selectors["application_row"], timeout=20000)
+        # Some tenants split applications into "Active"/"Inactive" tabs and
+        # keep the inactive panel mounted but display:none rather than
+        # unmounting it. That row is never "visible" (Playwright's default
+        # wait state) no matter how long we wait, even though its text is
+        # perfectly readable - so wait for it to exist rather than to show.
+        page.wait_for_selector(selectors["application_row"], timeout=40000, state="attached")
         rows = page.query_selector_all(selectors["application_row"])
         for row in rows:
             title_el = row.query_selector(selectors["job_title"])
